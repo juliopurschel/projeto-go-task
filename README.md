@@ -38,8 +38,8 @@ A aplicação funciona no navegador, com armazenamento de tarefas no `localStora
 - **Validação de formulário:** os dois campos são obrigatórios e exigem pelo menos 10 caracteres.
 - **Edição de tarefas:** atualização do nome e da descrição em um formulário preenchido com os dados atuais.
 - **Exclusão de tarefas:** remoção de um cartão do quadro.
-- **Movimentação entre etapas:** alteração de status ao arrastar e soltar os cartões com Angular CDK.
-- **Comentários por tarefa:** modal para consultar a descrição completa, adicionar comentários e removê-los. A persistência de novos comentários possui uma limitação descrita ao final deste documento.
+- **Movimentação e ordenação:** alteração de status e reordenação dos cartões com Angular CDK, preservando a posição escolhida após recarregar a página.
+- **Comentários por tarefa:** modal para consultar a descrição completa, adicionar comentários válidos e removê-los, com persistência ao fechar o modal.
 - **Contadores por coluna:** exibição da quantidade de tarefas em cada etapa.
 - **Estado vazio:** mensagem quando nenhuma tarefa foi cadastrada.
 - **Adaptação de layout:** seção de boas-vindas ajustada por breakpoint e rolagem horizontal do quadro em telas menores.
@@ -66,9 +66,9 @@ Versões de referência declaradas no `package.json`; as versões resolvidas est
 - **Templates modernos:** uso de `@if`, `@for` e `@let` para exibição condicional, listas e variáveis de template.
 - **Comunicação entre componentes:** recebimento de tarefas com `@Input({ required: true })`.
 - **Injeção de dependências:** acesso aos serviços com `inject()` e disponibilização com `providedIn: 'root'`.
-- **Separação de responsabilidades:** componentes para interação e apresentação; serviços para tarefas e abertura de modais.
+- **Organização por feature:** componentes, serviços e contratos de formulário de tarefas reunidos em `features/tasks`, com modelos de domínio e utilitários independentes.
 - **Formulários reativos:** uso de `FormGroup`, `FormControl` e `Validators`, com feedback de validação e botão de envio desabilitado para formulários inválidos.
-- **Programação reativa:** combinação de `BehaviorSubject`, `map`, `tap` e `AsyncPipe` para conectar o estado à interface e ao armazenamento local.
+- **Programação reativa:** combinação de `BehaviorSubject`, `map` e `AsyncPipe` para conectar o estado à interface. A persistência ocorre nas alterações do serviço, independentemente de assinaturas dos observables.
 - **Modelagem de dados:** interfaces para tarefas, comentários e formulários; enum e tipo para os status permitidos.
 - **Interação com o DOM:** uso de `ViewChild` e `ElementRef` para devolver o foco ao campo após adicionar um comentário.
 
@@ -103,7 +103,9 @@ npm run build
 
 Os arquivos para hospedagem estática são gerados em `dist/projeto-go-task/browser/`.
 
-O build de produção tenta incorporar o CSS da fonte externa. Se o ambiente bloquear o acesso a `fonts.googleapis.com`, essa etapa pode falhar. Para verificar a compilação em modo de desenvolvimento, sem essa otimização, execute:
+A incorporação de fontes externas durante o build está desativada em `angular.json`, permitindo compilar sem acessar o Google Fonts. A fonte Archivo é carregada pelo navegador em tempo de execução; se estiver indisponível, a interface usa `sans-serif`. As otimizações de scripts e estilos continuam ativas. A configuração do PostCSS também habilita a compilação do Tailwind para transformar seletores CSS aninhados antes da otimização do Angular.
+
+Para compilar em modo de desenvolvimento, execute:
 
 ```bash
 npm run build -- --configuration development
@@ -126,36 +128,61 @@ public/
 └── favicon.ico
 src/
 ├── app/
-│   ├── components/
-│   │   ├── header/                 # Identidade visual e perfil ilustrativo
-│   │   ├── main-content/           # Composição da área principal
-│   │   ├── welcome-section/        # Boas-vindas e ação de criar tarefa
-│   │   ├── task-list-section/      # Colunas Kanban e drag and drop
-│   │   ├── task-card/              # Resumo e ações de uma tarefa
-│   │   ├── task-form-modal/        # Formulário de criação e edição
-│   │   └── task-comments-modal/    # Detalhes e comentários
-│   ├── enums/                      # Valores dos status
-│   ├── interfaces/                 # Contratos de tarefas, comentários e formulários
-│   ├── services/                   # Estado das tarefas e controle dos modais
-│   ├── types/                      # Tipo dos status permitidos
-│   ├── utils/                      # Geração de identificadores
-│   ├── app.component.*             # Componente raiz
-│   ├── app.config.ts               # Providers da aplicação
+│   ├── domain/
+│   │   └── tasks/
+│   │       ├── enums/task-status.enum.ts
+│   │       ├── interfaces/comment.interface.ts
+│   │       ├── types/task-status.ts
+│   │       └── task.interface.ts
+│   ├── features/
+│   │   └── tasks/
+│   │       ├── components/
+│   │       │   ├── main-content/
+│   │       │   ├── welcome-section/
+│   │       │   ├── task-list-section/
+│   │       │   ├── task-card/
+│   │       │   ├── task-form-modal/
+│   │       │   └── task-comments-modal/
+│   │       ├── interfaces/
+│   │       │   ├── task-form-controls.interface.ts
+│   │       │   └── task-form-modal-data.interface.ts
+│   │       └── services/
+│   │           ├── task.service.ts
+│   │           ├── task.service.spec.ts
+│   │           └── modal-controller.service.ts
+│   ├── layout/
+│   │   └── header/
+│   ├── shared/
+│   │   └── utils/generate-unique-id-with-timestamp.ts
+│   ├── app.component.*
+│   ├── app.config.ts
 │   └── app.routes.ts               # Rotas, atualmente sem definições
-├── index.html                      # Documento HTML de entrada
-├── main.ts                         # Inicialização com bootstrapApplication
-└── styles.css                      # Fonte, Tailwind e estilos globais
-angular.json                        # Configurações de execução, build e testes
-.postcssrc.json                     # Plugin do Tailwind para PostCSS
+├── index.html
+├── main.ts
+└── styles.css
+angular.json
+.postcssrc.json
 ```
+
+Os arquivos de template, estilos e testes de cada componente ficam junto ao seu TypeScript. Os nomes dos componentes, serviços e contratos foram preservados na migração.
+
+### Responsabilidades e dependências
+
+- **`features/tasks`:** contém a funcionalidade de tarefas, incluindo boas-vindas com criação de tarefa, quadro, cartões, modais, serviços e contratos dos formulários. Pode importar `domain` e `shared`.
+- **`domain/tasks`:** contém os modelos e status do negócio. Não importa componentes, serviços da feature ou Angular.
+- **`shared`:** contém utilitários genéricos, sem dependências de features ou modelos específicos de tarefas.
+- **`layout`:** contém a estrutura visual global. O cabeçalho não depende da feature de tarefas.
+- **`AppComponent`:** compõe o cabeçalho e o conteúdo da feature.
+
+Não há pasta `core` porque a aplicação ainda não possui infraestrutura global que precise dela. O uso de `providedIn: 'root'` mantém uma instância do serviço no injetor raiz e não determina em qual pasta o arquivo deve ficar.
 
 ## Organização e fluxo de dados
 
-O [`TaskService`](src/app/services/task.service.ts) mantém uma lista de tarefas por status em `BehaviorSubject`s privados. Os componentes recebem os dados por observables, consumidos no template com `AsyncPipe`. As emissões passam por `structuredClone`, e o serviço lê e grava os dados nas chaves `to-do`, `doing` e `done` do `localStorage`.
+O [`TaskService`](src/app/features/tasks/services/task.service.ts) mantém uma lista de tarefas por status em `BehaviorSubject`s privados. Os componentes recebem os dados por observables, consumidos no template com `AsyncPipe`. As emissões passam por `structuredClone` para proteger o estado interno. O serviço lê e grava os dados nas mesmas chaves `to-do`, `doing` e `done` do `localStorage`, preservando a compatibilidade com as tarefas já salvas. Cada alteração grava o estado sem depender de assinantes; dados armazenados com formato inválido são desconsiderados. Se a leitura ou gravação falhar, a aplicação continua com o estado disponível em memória e registra o erro no console.
 
-O [`ModalControllerService`](src/app/services/modal-controller.service.ts) centraliza a abertura dos diálogos com Angular CDK. O mesmo componente de formulário atende à criação e à edição, recebendo o modo de operação e os valores iniciais por injeção de dados. Ao fechar o formulário com dados válidos, o componente que abriu o modal solicita a atualização ao serviço de tarefas.
+O [`ModalControllerService`](src/app/features/tasks/services/modal-controller.service.ts) centraliza a abertura dos diálogos com Angular CDK. O mesmo componente de formulário atende à criação e à edição, recebendo o modo de operação e os valores iniciais por injeção de dados. Ao fechar o formulário com dados válidos, o componente que abriu o modal solicita a atualização ao serviço de tarefas.
 
-O [`TaskListSectionComponent`](src/app/components/task-list-section/task-list-section.component.ts) conecta as três colunas com as diretivas do CDK. Ao soltar um cartão, identifica a coluna de destino e solicita a atualização do status no serviço.
+O [`TaskListSectionComponent`](src/app/features/tasks/components/task-list-section/task-list-section.component.ts) conecta as três colunas com as diretivas do CDK. Ao soltar um cartão, identifica a coluna e o índice de destino e solicita a atualização ao serviço. O serviço concentra a movimentação, a reordenação e a persistência, evitando modificar apenas a cópia exibida no template.
 
 Uma tarefa reúne `id`, `name`, `description`, `status` e uma lista de `comments`. Cada comentário possui `id` e `description`. Os identificadores são gerados localmente a partir de timestamp e de uma parte aleatória.
 
@@ -173,16 +200,27 @@ Uma tarefa reúne `id`, `name`, `description`, `status` e uma lista de `comments
 
 ## Testes
 
-O projeto possui arquivos `*.spec.ts` junto aos componentes, com testes iniciais de criação e verificações do componente raiz. Para executá-los, é necessário ter o Google Chrome instalado ou indicar um executável compatível pela variável de ambiente `CHROME_BIN`.
+Os testes usam Karma e Jasmine. Para executá-los, é necessário ter o Google Chrome instalado ou indicar um executável Chromium compatível pela variável de ambiente `CHROME_BIN`.
 
-A suíte contém testes iniciais que não refletem integralmente a implementação: existe uma expectativa do template inicial do Angular CLI no `AppComponent`, e os testes dos cartões e modais não fornecem todos os dados de entrada e as dependências exigidas pelos componentes. Não há testes específicos dos fluxos de negócio e da persistência, nem configuração de testes de ponta a ponta no repositório.
+```bash
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+No Windows com Microsoft Edge, por exemplo, execute no PowerShell:
+
+```powershell
+$env:CHROME_BIN = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+A suíte cobre composição da interface, validação e retorno do formulário, inclusão e remoção de comentários, integração dos cartões com os diálogos e o serviço, criação e exclusão de tarefas, edição, movimentação entre status, ordenação dentro da coluna e persistência após recriar o serviço. Também verifica isolamento de cópias, tratamento de dados armazenados inválidos e funcionamento em memória quando a gravação falha.
+
+Não há configuração de testes de ponta a ponta no repositório.
 
 ## Escopo e limitações
 
 O Go Task foi desenvolvido para praticar Angular em uma aplicação local de gerenciamento de tarefas. A versão final possui as seguintes características e limitações:
 
-- **Persistência dos comentários:** ao adicionar um comentário, o modal não sinaliza a alteração ao fechamento. Isso pode impedir que novos comentários sejam salvos ao fechar e reabrir o modal ou recarregar a página. A remoção sinaliza a mudança.
-- **Ordenação dos cartões:** a posição escolhida no arraste não é preservada pelo serviço; a atualização reinsere a tarefa no final da lista de destino, inclusive em movimentos dentro da mesma coluna.
 - **Elementos ilustrativos:** o perfil exibido, os botões de notificações e saída e o texto de tempo dos comentários são estáticos. Não há autenticação, notificações ou cálculo do horário dos comentários.
 - **Movimentação dos cartões:** a interface utiliza arrastar e soltar, sem um controle alternativo para alterar o status pelo teclado.
 - **Exclusão de tarefas:** a remoção é imediata, sem confirmação ou opção de desfazer.

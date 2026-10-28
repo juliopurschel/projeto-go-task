@@ -1,5 +1,5 @@
-import { TaskStatus } from '../types/task-status';
-import { IComment } from './comment.interface';
+import { TaskStatus } from './types/task-status';
+import { IComment } from './interfaces/comment.interface';
 
 export interface ITask {
   id: string;

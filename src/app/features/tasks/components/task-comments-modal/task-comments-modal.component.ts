@@ -1,9 +1,9 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, ElementRef, inject, ViewChild } from '@angular/core';
-import { ITask } from '../../interfaces/task.interface';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IComment } from '../../interfaces/comment.interface';
-import { generateUniqueIdWithTimestamp } from '../../utils/generate-unique-id-with-timestamp';
+import { IComment } from '../../../../domain/tasks/interfaces/comment.interface';
+import { ITask } from '../../../../domain/tasks/task.interface';
+import { generateUniqueIdWithTimestamp } from '../../../../shared/utils/generate-unique-id-with-timestamp';
 
 @Component({
   selector: 'app-task-comments-modal',
@@ -13,7 +13,10 @@ import { generateUniqueIdWithTimestamp } from '../../utils/generate-unique-id-wi
 })
 export class TaskCommentsModalComponent {
   taskCommentsChanged = false;
-  commentControl = new FormControl('', [Validators.required]);
+  commentControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(/\S/)],
+  });
 
   @ViewChild('commentInput') commentInputRef!: ElementRef<HTMLInputElement>;
 
@@ -21,16 +24,20 @@ export class TaskCommentsModalComponent {
   readonly _dialogRef: DialogRef<boolean> = inject(DialogRef);
 
   onAddComment() {
+    if (this.commentControl.invalid) {
+      return;
+    }
+
     const newComment: IComment = {
       id: generateUniqueIdWithTimestamp(),
-      description: this.commentControl.value || '',
+      description: this.commentControl.value.trim(),
     };
 
     this._task.comments.unshift(newComment);
 
     this.commentControl.reset();
 
-    this.taskCommentsChanged = this.taskCommentsChanged;
+    this.taskCommentsChanged = true;
 
     this.commentInputRef.nativeElement.focus();
   }

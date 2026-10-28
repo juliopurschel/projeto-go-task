@@ -1,4 +1,4 @@
-<div class="rounded-xl overflow-scroll bg-white max-h-[500] scrollbar-hidden">
+<div class="rounded-xl overflow-scroll bg-white max-h-[500px] scrollbar-hidden">
   <div class="p-4 flex gap-1">
     <img src="images/icon-task-star.svg" />
     <h1 class="font-semibold text-lg">Comentar tarefa</h1>
@@ -8,8 +8,8 @@
       (click)="onCloseModal()"
     />
   </div>
-  <div class="p-4 border-top border-[#D1D5DB]">
-    <h1 class="font- semibold text-lg mb-4">{{ _task.name }}</h1>
+  <div class="p-4 border-t border-[#D1D5DB]">
+    <h1 class="font-semibold text-lg mb-4">{{ _task.name }}</h1>
     <p class="font-semibold text-sm mb-2">Descrição</p>
     <p class="font-normal text-base text-[#374151]">
       {{ _task.description }}
@@ -33,7 +33,7 @@
         <button
           class="{{ `py-3 px-4 rounded-xl text-sm font-semibold text-white cursor-pointer 
           ${commentControl.valid 
-            ? 'bg-[#2A89EF] active:translate-y-1 transition-transform duration 75 shadow-md shadow-blue-500/50' 
+            ? 'bg-[#2A89EF] active:translate-y-1 transition-transform duration-75 shadow-md shadow-blue-500/50' 
             : 'bg-[#D7D8D8]'}`
             }}"
           [disabled]="commentControl.invalid"

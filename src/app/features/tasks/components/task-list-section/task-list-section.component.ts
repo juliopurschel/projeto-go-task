@@ -1,17 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { TaskCardComponent } from '../task-card/task-card.component';
-import { TaskService } from '../../services/task.service';
-import {
-  CdkDrag,
-  CdkDragDrop,
-  CdkDropList,
-  moveItemInArray,
-  transferArrayItem,
-} from '@angular/cdk/drag-drop';
-import { ITask } from '../../interfaces/task.interface';
+import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { AsyncPipe } from '@angular/common';
-import { TaskStatus } from '../../types/task-status';
-import { TaskStatusEnum } from '../../enums/task-status.enum';
+import { TaskService } from '../../services/task.service';
+import { TaskStatusEnum } from '../../../../domain/tasks/enums/task-status.enum';
+import { ITask } from '../../../../domain/tasks/task.interface';
+import { TaskStatus } from '../../../../domain/tasks/types/task-status';
 
 @Component({
   selector: 'app-task-list-section',
@@ -23,19 +17,23 @@ export class TaskListSectionComponent {
   readonly _taskService = inject(TaskService);
 
   onCardDrop(event: CdkDragDrop<ITask[]>) {
-    this.moveCardToColumn(event);
-
     const taskId = event.item.data.id;
     const taskCurrentStatus = event.item.data.status;
     const droppedColumn = event.container.id;
 
-    this.updateTaskStatus(taskId, taskCurrentStatus, droppedColumn);
+    this.updateTaskStatus(
+      taskId,
+      taskCurrentStatus,
+      droppedColumn,
+      event.currentIndex,
+    );
   }
 
   private updateTaskStatus(
     taskId: string,
     taskCurrentStatus: TaskStatus,
     droppedColumn: string,
+    taskNextIndex: number,
   ) {
     let taskNextStatus: TaskStatus;
 
@@ -57,23 +55,7 @@ export class TaskListSectionComponent {
       taskId,
       taskCurrentStatus,
       taskNextStatus,
+      taskNextIndex,
     );
-  }
-
-  private moveCardToColumn(event: CdkDragDrop<ITask[]>) {
-    if (event.previousContainer === event.container) {
-      moveItemInArray(
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex,
-      );
-    } else {
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex,
-      );
-    }
   }
 }
